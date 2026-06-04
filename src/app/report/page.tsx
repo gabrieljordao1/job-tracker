@@ -2,38 +2,39 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Briefcase, CheckCircle, Clock, AlertTriangle, Pause } from "lucide-react";
+import { Briefcase, CheckCircle, Clock, AlertTriangle, Hammer, Paintbrush } from "lucide-react";
 
 interface Job {
   id: string;
   community: string;
+  builder: string;
   lot: string;
-  phase: string;
+  stage: string;
   crew: string;
-  status: string;
   notes: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
-function phaseColor(phase: string) {
-  const map: Record<string, string> = {
-    drywall: "#60a5fa", texture: "#a78bfa", prime: "#c084fc",
-    paint: "#34d399", patch: "#fbbf24", other: "#94a3b8",
-  };
-  return map[phase] || "#94a3b8";
+const STAGE_GROUPS: { group: string; color: string; stages: string[] }[] = [
+  { group: "Drywall", color: "#60a5fa", stages: ["Hang", "Scrap", "Tape", "Bed", "Skim", "Sand"] },
+  { group: "Paint", color: "#34d399", stages: ["Prime", "1st Point Up", "1st Paint", "Final Point Up", "Final Paint"] },
+  { group: "QC", color: "#a78bfa", stages: ["QC Point Up", "QC Paint"] },
+  { group: "Homeowners", color: "#f472b6", stages: ["Homeowners Point Up", "Homeowners Paint"] },
+  { group: "Waiting", color: "#fbbf24", stages: ["Waiting for Prime", "Waiting for Trim", "Waiting for Final", "Waiting for QC", "Waiting for Homeowners"] },
+  { group: "Done", color: "#22c55e", stages: ["Complete"] },
+];
+
+function stageColor(stage: string): string {
+  for (const g of STAGE_GROUPS) {
+    if (g.stages.includes(stage)) return g.color;
+  }
+  return "#94a3b8";
 }
 
-function statusColor(status: string) {
-  const map: Record<string, string> = {
-    not_started: "#94a3b8", in_progress: "#60a5fa",
-    complete: "#34d399", delayed: "#f87171", on_hold: "#fbbf24",
-  };
-  return map[status] || "#94a3b8";
-}
-
-function fmt(s: string) {
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function stageGroupName(stage: string): string {
+  for (const g of STAGE_GROUPS) {
+    if (g.stages.includes(stage)) return g.group;
+  }
+  return "—";
 }
 
 function ReportContent() {
@@ -42,9 +43,9 @@ function ReportContent() {
 
   let jobs: Job[] = [];
   try {
-    if (raw) jobs = JSON.parse(atob(raw));
+    if (raw) jobs = JSON.parse(decodeURIComponent(escape(atob(raw))));
   } catch {
-    // invalid data
+    try { if (raw) jobs = JSON.parse(atob(raw)); } catch { /* invalid */ }
   }
 
   if (jobs.length === 0) {
@@ -54,7 +55,7 @@ function ReportContent() {
           <Briefcase size={48} className="mx-auto mb-4 text-[rgba(255,255,255,0.2)]" />
           <h1 className="text-xl font-semibold mb-2">No Report Data</h1>
           <p className="text-sm text-[rgba(255,255,255,0.5)]">
-            This link doesn&apos;t contain any job data. Ask the sender for an updated link.
+            This link doesn&apos;t contain any job data.
           </p>
         </div>
       </div>
@@ -62,13 +63,14 @@ function ReportContent() {
   }
 
   const total = jobs.length;
-  const inProgress = jobs.filter((j) => j.status === "in_progress").length;
-  const complete = jobs.filter((j) => j.status === "complete").length;
-  const delayed = jobs.filter((j) => j.status === "delayed").length;
-  const notStarted = jobs.filter((j) => j.status === "not_started").length;
-  const onHold = jobs.filter((j) => j.status === "on_hold").length;
+  const drywall = jobs.filter((j) => STAGE_GROUPS[0].stages.includes(j.stage)).length;
+  const paint = jobs.filter((j) => STAGE_GROUPS[1].stages.includes(j.stage)).length;
+  const qc = jobs.filter((j) => STAGE_GROUPS[2].stages.includes(j.stage)).length;
+  const homeowners = jobs.filter((j) => STAGE_GROUPS[3].stages.includes(j.stage)).length;
+  const waiting = jobs.filter((j) => STAGE_GROUPS[4].stages.includes(j.stage)).length;
+  const complete = jobs.filter((j) => j.stage === "Complete").length;
+  const noStage = jobs.filter((j) => !j.stage).length;
 
-  // Group by community
   const grouped = jobs.reduce<Record<string, Job[]>>((acc, j) => {
     (acc[j.community] ||= []).push(j);
     return acc;
@@ -81,7 +83,6 @@ function ReportContent() {
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto space-y-6 pb-12">
-      {/* Header */}
       <div className="text-center pt-4">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Briefcase size={24} className="text-emerald-400" />
@@ -92,28 +93,21 @@ function ReportContent() {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold">{total}</div>
-          <div className="text-xs text-[rgba(255,255,255,0.4)]">Total Jobs</div>
-        </div>
-        <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-blue-400">{inProgress}</div>
-          <div className="text-xs text-[rgba(255,255,255,0.4)]">In Progress</div>
-        </div>
-        <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-emerald-400">{complete}</div>
-          <div className="text-xs text-[rgba(255,255,255,0.4)]">Complete</div>
-        </div>
-        <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-red-400">{delayed}</div>
-          <div className="text-xs text-[rgba(255,255,255,0.4)]">Delayed</div>
-        </div>
-        <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center col-span-2 sm:col-span-1">
-          <div className="text-2xl font-bold text-[rgba(255,255,255,0.6)]">{notStarted + onHold}</div>
-          <div className="text-xs text-[rgba(255,255,255,0.4)]">Waiting</div>
-        </div>
+      {/* Summary */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {[
+          { n: total, label: "Total", color: "" },
+          { n: drywall, label: "Drywall", color: "text-blue-400" },
+          { n: paint, label: "Paint", color: "text-emerald-400" },
+          { n: qc + homeowners, label: "QC/HO", color: "text-purple-400" },
+          { n: waiting, label: "Waiting", color: "text-amber-400" },
+          { n: complete, label: "Done", color: "text-green-500" },
+        ].map((s) => (
+          <div key={s.label} className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
+            <div className={`text-2xl font-bold ${s.color}`}>{s.n}</div>
+            <div className="text-xs text-[rgba(255,255,255,0.4)]">{s.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Completion bar */}
@@ -126,7 +120,7 @@ function ReportContent() {
         </div>
         <div className="h-3 bg-[#1a1a1a] rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full"
             style={{
               width: `${total > 0 ? (complete / total) * 100 : 0}%`,
               background: "linear-gradient(90deg, #34d399, #10b981)",
@@ -141,56 +135,36 @@ function ReportContent() {
         {Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([community, cJobs]) => {
-            const cDone = cJobs.filter((j) => j.status === "complete").length;
-            const cActive = cJobs.filter((j) => j.status === "in_progress").length;
-            const cDelayed = cJobs.filter((j) => j.status === "delayed").length;
+            const builder = cJobs[0]?.builder || "";
+            const cDone = cJobs.filter((j) => j.stage === "Complete").length;
+            const cDrywall = cJobs.filter((j) => STAGE_GROUPS[0].stages.includes(j.stage)).length;
+            const cPaint = cJobs.filter((j) => STAGE_GROUPS[1].stages.includes(j.stage)).length;
+            const cWaiting = cJobs.filter((j) => STAGE_GROUPS[4].stages.includes(j.stage)).length;
             return (
               <div key={community} className="bg-[#111] border border-[#222] rounded-lg overflow-hidden">
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <span className="font-medium">{community}</span>
-                  <div className="flex items-center gap-3 text-xs">
-                    {cActive > 0 && (
-                      <span className="flex items-center gap-1 text-blue-400">
-                        <Clock size={12} /> {cActive}
-                      </span>
-                    )}
-                    {cDone > 0 && (
-                      <span className="flex items-center gap-1 text-emerald-400">
-                        <CheckCircle size={12} /> {cDone}
-                      </span>
-                    )}
-                    {cDelayed > 0 && (
-                      <span className="flex items-center gap-1 text-red-400">
-                        <AlertTriangle size={12} /> {cDelayed}
-                      </span>
-                    )}
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <span className="font-medium">{community}</span>
+                      <span className="text-xs text-[rgba(255,255,255,0.35)] ml-2">{builder}</span>
+                    </div>
+                    <span className="text-xs text-emerald-400">{cDone}/{cJobs.length} done</span>
+                  </div>
+                  <div className="flex gap-3 text-xs text-[rgba(255,255,255,0.5)]">
+                    {cDrywall > 0 && <span className="text-blue-400">{cDrywall} drywall</span>}
+                    {cPaint > 0 && <span className="text-emerald-400">{cPaint} paint</span>}
+                    {cWaiting > 0 && <span className="text-amber-400">{cWaiting} waiting</span>}
                   </div>
                 </div>
                 <div className="border-t border-[#1a1a1a]">
                   {cJobs
                     .sort((a, b) => a.lot.localeCompare(b.lot, undefined, { numeric: true }))
                     .map((job) => (
-                      <div
-                        key={job.id}
-                        className="px-4 py-2 border-b border-[#1a1a1a] last:border-0 flex items-center gap-3"
-                      >
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ background: statusColor(job.status) }}
-                        />
-                        <span className="font-mono text-sm">Lot {job.lot}</span>
-                        <span
-                          className="text-xs px-1.5 py-0.5 rounded"
-                          style={{
-                            background: `${phaseColor(job.phase)}20`,
-                            color: phaseColor(job.phase),
-                          }}
-                        >
-                          {fmt(job.phase)}
-                        </span>
-                        <span className="text-xs text-[rgba(255,255,255,0.3)] ml-auto">
-                          {fmt(job.status)}
-                        </span>
+                      <div key={job.id} className="px-4 py-1.5 border-b border-[#1a1a1a] last:border-0 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: stageColor(job.stage) }} />
+                        <span className="font-mono text-xs w-12">Lot {job.lot}</span>
+                        <span className="text-xs text-[rgba(255,255,255,0.5)] flex-1 truncate">{job.stage || "—"}</span>
+                        {job.notes && <span className="text-[10px] text-[rgba(255,255,255,0.3)] truncate max-w-[120px]">{job.notes}</span>}
                       </div>
                     ))}
                 </div>
@@ -199,10 +173,8 @@ function ReportContent() {
           })}
       </div>
 
-      {/* Footer */}
       <div className="text-center text-xs text-[rgba(255,255,255,0.25)] pt-4">
         Generated {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        {" "}at {now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
       </div>
     </div>
   );
@@ -210,13 +182,7 @@ function ReportContent() {
 
 export default function ReportPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-[rgba(255,255,255,0.5)]">Loading report...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-[rgba(255,255,255,0.5)]">Loading report...</div></div>}>
       <ReportContent />
     </Suspense>
   );

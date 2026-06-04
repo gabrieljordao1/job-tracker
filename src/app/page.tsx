@@ -5,15 +5,12 @@ import {
   Plus,
   Trash2,
   Edit3,
-  Save,
   X,
   ChevronDown,
   ChevronRight,
   Briefcase,
   Share2,
-  Filter,
   Search,
-  Copy,
   Check,
   Home,
 } from "lucide-react";
@@ -23,45 +20,114 @@ import {
 interface Job {
   id: string;
   community: string;
+  builder: string;
   lot: string;
-  phase: Phase;
+  stage: string;
   crew: string;
-  status: Status;
   notes: string;
   createdAt: string;
   updatedAt: string;
 }
 
-type Phase = "drywall" | "texture" | "paint" | "patch" | "prime" | "other";
-type Status = "not_started" | "in_progress" | "complete" | "delayed" | "on_hold";
+// ─── Data from spreadsheet ───────────────────────
 
-const PHASES: { value: Phase; label: string; color: string }[] = [
-  { value: "drywall", label: "Drywall", color: "#60a5fa" },
-  { value: "texture", label: "Texture", color: "#a78bfa" },
-  { value: "prime", label: "Prime", color: "#c084fc" },
-  { value: "paint", label: "Paint", color: "#34d399" },
-  { value: "patch", label: "Patch", color: "#fbbf24" },
-  { value: "other", label: "Other", color: "#94a3b8" },
+const COMMUNITIES: { name: string; builder: string }[] = [
+  { name: "Odell Park", builder: "DRB" },
+  { name: "Mallard Park", builder: "Pulte" },
+  { name: "Galloway", builder: "Pulte" },
+  { name: "Olmsted", builder: "Pote" },
+  { name: "Sugar Creek", builder: "Red Cedar" },
+  { name: "Plot", builder: "Red Cedar" },
+  { name: "Anderson Townhomes", builder: "DR Horton" },
 ];
 
-const STATUSES: { value: Status; label: string; color: string; bg: string }[] = [
-  { value: "not_started", label: "Not Started", color: "#94a3b8", bg: "rgba(148,163,184,0.1)" },
-  { value: "in_progress", label: "In Progress", color: "#60a5fa", bg: "rgba(96,165,250,0.1)" },
-  { value: "complete", label: "Complete", color: "#34d399", bg: "rgba(52,211,153,0.1)" },
-  { value: "delayed", label: "Delayed", color: "#f87171", bg: "rgba(248,113,113,0.1)" },
-  { value: "on_hold", label: "On Hold", color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
+const STAGE_GROUPS: { group: string; color: string; stages: string[] }[] = [
+  { group: "Drywall", color: "#60a5fa", stages: ["Hang", "Scrap", "Tape", "Bed", "Skim", "Sand"] },
+  { group: "Paint", color: "#34d399", stages: ["Prime", "1st Point Up", "1st Paint", "Final Point Up", "Final Paint"] },
+  { group: "QC", color: "#a78bfa", stages: ["QC Point Up", "QC Paint"] },
+  { group: "Homeowners", color: "#f472b6", stages: ["Homeowners Point Up", "Homeowners Paint"] },
+  { group: "Waiting", color: "#fbbf24", stages: ["Waiting for Prime", "Waiting for Trim", "Waiting for Final", "Waiting for QC", "Waiting for Homeowners"] },
+  { group: "Done", color: "#22c55e", stages: ["Complete"] },
 ];
 
-const COMMUNITIES = [
-  "Mallard Park", "Odell Park", "Galloway", "Cedar Hills",
-  "Olmsted", "Ridgeview", "Context", "Sugar Creek",
-  "Cardinal Creek", "Plott", "Cama",
-];
+const ALL_STAGES = STAGE_GROUPS.flatMap((g) => g.stages);
 
 const CREWS = [
   "Gabriel's Crew", "Marcus's Crew", "Tyler's Crew", "Gabe's Crew",
   "Jordan's Crew", "Sub - Drywaller", "Sub - Painter", "Sub - Texture",
 ];
+
+// ─── Seed data from the spreadsheet ──────────────
+
+function buildSeedJobs(): Job[] {
+  const now = new Date().toISOString();
+  const jobs: Job[] = [];
+  let idx = 0;
+  const add = (community: string, builder: string, lot: string, stage: string, notes = "") => {
+    jobs.push({
+      id: `seed_${idx++}`,
+      community, builder, lot, stage, crew: "", notes,
+      createdAt: now, updatedAt: now,
+    });
+  };
+
+  // Odell Park — DRB
+  add("Odell Park", "DRB", "1", "Waiting for QC", "Repairs need to be sanded and painted");
+  add("Odell Park", "DRB", "2", "Waiting for QC");
+  add("Odell Park", "DRB", "3", "Waiting for QC");
+  add("Odell Park", "DRB", "4", "Waiting for QC");
+  add("Odell Park", "DRB", "5", "Waiting for QC");
+  add("Odell Park", "DRB", "42", "");
+
+  // Mallard Park — Pulte
+  for (const lot of ["13","14","15","16","17","18","19","20"]) {
+    add("Mallard Park", "Pulte", lot, "Waiting for Homeowners");
+  }
+  add("Mallard Park", "Pulte", "58", "Waiting for Final");
+  add("Mallard Park", "Pulte", "59", "Prime");
+  add("Mallard Park", "Pulte", "60", "Prime");
+  add("Mallard Park", "Pulte", "61", "Prime");
+  add("Mallard Park", "Pulte", "62", "Waiting for Final");
+
+  // Galloway — Pulte
+  for (const lot of ["25","26","27","28"]) {
+    add("Galloway", "Pulte", lot, "Waiting for Final");
+  }
+
+  // Olmsted — Pote
+  add("Olmsted", "Pote", "276", "Waiting for Final");
+  add("Olmsted", "Pote", "277", "1st Paint");
+  add("Olmsted", "Pote", "278", "Prime");
+  add("Olmsted", "Pote", "279", "Prime");
+  add("Olmsted", "Pote", "280", "Hang");
+
+  // Sugar Creek — Red Cedar (lots 1-40)
+  for (let i = 1; i <= 33; i++) {
+    add("Sugar Creek", "Red Cedar", String(i), "Waiting for Final",
+      i === 12 ? "Need to ask for an EPO for accent colors" : "");
+  }
+  for (const lot of ["34","35","36","38","40"]) add("Sugar Creek", "Red Cedar", lot, "Prime");
+  for (const lot of ["37","39"]) add("Sugar Creek", "Red Cedar", lot, "Waiting for Trim");
+
+  // Plot — Red Cedar
+  for (const s of ["A","B","C","D"]) {
+    add("Plot", "Red Cedar", `1${s}`, "Waiting for QC", s === "A" ? "Need to ask for EPO for accent colors" : "");
+    add("Plot", "Red Cedar", `2${s}`, "Waiting for QC");
+    add("Plot", "Red Cedar", `3${s}`, "Final Paint");
+    add("Plot", "Red Cedar", `4${s}`, "Final Paint");
+    add("Plot", "Red Cedar", `5${s}`, "");
+    add("Plot", "Red Cedar", `6${s}`, "Waiting for Trim");
+    add("Plot", "Red Cedar", `7${s}`, "Sand");
+    add("Plot", "Red Cedar", `8${s}`, "Waiting for Final");
+  }
+
+  // Anderson Townhomes — DR Horton
+  for (const lot of ["15","16","17","18","19"]) {
+    add("Anderson Townhomes", "DR Horton", lot, "");
+  }
+
+  return jobs;
+}
 
 // ─── Helpers ─────────────────────────────────────
 
@@ -72,27 +138,37 @@ function genId() {
 function loadJobs(): Job[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem("stancil_jobs");
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem("stancil_jobs_v2");
+    if (raw) return JSON.parse(raw);
+    // First load: seed from spreadsheet data
+    const seed = buildSeedJobs();
+    localStorage.setItem("stancil_jobs_v2", JSON.stringify(seed));
+    return seed;
   } catch {
     return [];
   }
 }
 
 function saveJobs(jobs: Job[]) {
-  localStorage.setItem("stancil_jobs", JSON.stringify(jobs));
+  localStorage.setItem("stancil_jobs_v2", JSON.stringify(jobs));
 }
 
-function phaseColor(phase: Phase) {
-  return PHASES.find((p) => p.value === phase)?.color || "#94a3b8";
+function stageColor(stage: string): string {
+  for (const g of STAGE_GROUPS) {
+    if (g.stages.includes(stage)) return g.color;
+  }
+  return "#94a3b8";
 }
 
-function statusInfo(status: Status) {
-  return STATUSES.find((s) => s.value === status) || STATUSES[0];
+function stageGroup(stage: string): string {
+  for (const g of STAGE_GROUPS) {
+    if (g.stages.includes(stage)) return g.group;
+  }
+  return "—";
 }
 
-function fmt(label: string) {
-  return label.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function builderFor(community: string): string {
+  return COMMUNITIES.find((c) => c.name === community)?.builder || "";
 }
 
 // ─── Main Page ───────────────────────────────────
@@ -102,28 +178,24 @@ export default function JobTracker() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
+  const [filterStageGroup, setFilterStageGroup] = useState<string>("all");
   const [filterCommunity, setFilterCommunity] = useState<string>("all");
   const [expandedCommunity, setExpandedCommunity] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [view, setView] = useState<"list" | "board">("list");
 
   // Form state
   const [form, setForm] = useState({
     community: "",
     lot: "",
-    phase: "paint" as Phase,
+    stage: "",
     crew: "",
-    status: "not_started" as Status,
     notes: "",
   });
 
-  // Load on mount
   useEffect(() => {
     setJobs(loadJobs());
   }, []);
 
-  // Save on change
   const persist = useCallback((updated: Job[]) => {
     setJobs(updated);
     saveJobs(updated);
@@ -134,12 +206,13 @@ export default function JobTracker() {
   const handleSubmit = () => {
     if (!form.community || !form.lot) return;
     const now = new Date().toISOString();
+    const builder = builderFor(form.community);
 
     if (editingId) {
       persist(
         jobs.map((j) =>
           j.id === editingId
-            ? { ...j, ...form, updatedAt: now }
+            ? { ...j, ...form, builder, updatedAt: now }
             : j
         )
       );
@@ -147,7 +220,7 @@ export default function JobTracker() {
     } else {
       persist([
         ...jobs,
-        { id: genId(), ...form, createdAt: now, updatedAt: now },
+        { id: genId(), ...form, builder, createdAt: now, updatedAt: now },
       ]);
     }
     resetForm();
@@ -157,9 +230,8 @@ export default function JobTracker() {
     setForm({
       community: job.community,
       lot: job.lot,
-      phase: job.phase,
+      stage: job.stage,
       crew: job.crew,
-      status: job.status,
       notes: job.notes,
     });
     setEditingId(job.id);
@@ -171,13 +243,13 @@ export default function JobTracker() {
     persist(jobs.filter((j) => j.id !== id));
   };
 
-  const quickStatus = (id: string, status: Status) => {
+  const quickStage = (id: string, stage: string) => {
     const now = new Date().toISOString();
-    persist(jobs.map((j) => (j.id === id ? { ...j, status, updatedAt: now } : j)));
+    persist(jobs.map((j) => (j.id === id ? { ...j, stage, updatedAt: now } : j)));
   };
 
   const resetForm = () => {
-    setForm({ community: "", lot: "", phase: "paint", crew: "", status: "not_started", notes: "" });
+    setForm({ community: "", lot: "", stage: "", crew: "", notes: "" });
     setShowForm(false);
     setEditingId(null);
   };
@@ -185,15 +257,20 @@ export default function JobTracker() {
   // ─── Filtering ───────────────────────────────
 
   const filtered = jobs.filter((j) => {
-    if (filterStatus !== "all" && j.status !== filterStatus) return false;
     if (filterCommunity !== "all" && j.community !== filterCommunity) return false;
+    if (filterStageGroup !== "all") {
+      const sg = STAGE_GROUPS.find((g) => g.group === filterStageGroup);
+      if (sg && !sg.stages.includes(j.stage)) return false;
+    }
     if (search) {
       const s = search.toLowerCase();
       return (
         j.community.toLowerCase().includes(s) ||
         j.lot.toLowerCase().includes(s) ||
         j.crew.toLowerCase().includes(s) ||
-        j.notes.toLowerCase().includes(s)
+        j.notes.toLowerCase().includes(s) ||
+        j.stage.toLowerCase().includes(s) ||
+        j.builder.toLowerCase().includes(s)
       );
     }
     return true;
@@ -207,16 +284,17 @@ export default function JobTracker() {
 
   // Stats
   const total = jobs.length;
-  const inProgress = jobs.filter((j) => j.status === "in_progress").length;
-  const complete = jobs.filter((j) => j.status === "complete").length;
-  const delayed = jobs.filter((j) => j.status === "delayed").length;
+  const drywall = jobs.filter((j) => STAGE_GROUPS[0].stages.includes(j.stage)).length;
+  const paint = jobs.filter((j) => STAGE_GROUPS[1].stages.includes(j.stage)).length;
+  const waiting = jobs.filter((j) => STAGE_GROUPS[4].stages.includes(j.stage)).length;
+  const complete = jobs.filter((j) => j.stage === "Complete").length;
 
   // Unique communities in jobs
   const jobCommunities = [...new Set(jobs.map((j) => j.community))].sort();
 
-  // Share link
+  // Share
   const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/report?data=${encodeURIComponent(btoa(JSON.stringify(jobs)))}`
+    ? `${window.location.origin}/report?data=${encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(jobs)))))}`
     : "";
 
   const handleShare = () => {
@@ -244,38 +322,34 @@ export default function JobTracker() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-[#111] border border-[#222] hover:border-[#333] transition-colors"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
-              {copied ? "Copied!" : "Share Report"}
+              {copied ? "Copied!" : "Report"}
             </button>
             <button
               onClick={() => { resetForm(); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-400 transition-colors"
             >
               <Plus size={14} />
-              Add Job
+              Add
             </button>
           </div>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-2">
-          <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{total}</div>
-            <div className="text-xs text-[rgba(255,255,255,0.4)]">Total</div>
-          </div>
-          <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-blue-400">{inProgress}</div>
-            <div className="text-xs text-[rgba(255,255,255,0.4)]">Active</div>
-          </div>
-          <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-emerald-400">{complete}</div>
-            <div className="text-xs text-[rgba(255,255,255,0.4)]">Done</div>
-          </div>
-          <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-red-400">{delayed}</div>
-            <div className="text-xs text-[rgba(255,255,255,0.4)]">Delayed</div>
-          </div>
+        {/* Stats */}
+        <div className="grid grid-cols-5 gap-2">
+          {[
+            { n: total, label: "Total", color: "" },
+            { n: drywall, label: "Drywall", color: "text-blue-400" },
+            { n: paint, label: "Paint", color: "text-emerald-400" },
+            { n: waiting, label: "Waiting", color: "text-amber-400" },
+            { n: complete, label: "Done", color: "text-green-500" },
+          ].map((s) => (
+            <div key={s.label} className="bg-[#111] border border-[#222] rounded-lg p-2 text-center">
+              <div className={`text-xl font-bold ${s.color}`}>{s.n}</div>
+              <div className="text-[10px] text-[rgba(255,255,255,0.4)]">{s.label}</div>
+            </div>
+          ))}
         </div>
 
         {/* Search + Filters */}
@@ -286,25 +360,25 @@ export default function JobTracker() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search jobs..."
+              placeholder="Search lots, communities, builders..."
               className="bg-transparent flex-1 outline-none text-sm placeholder:text-[rgba(255,255,255,0.25)]"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as Status | "all")}
-              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm outline-none min-w-0"
+              value={filterStageGroup}
+              onChange={(e) => setFilterStageGroup(e.target.value)}
+              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm outline-none"
             >
-              <option value="all">All Status</option>
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+              <option value="all">All Stages</option>
+              {STAGE_GROUPS.map((g) => (
+                <option key={g.group} value={g.group}>{g.group}</option>
               ))}
             </select>
             <select
               value={filterCommunity}
               onChange={(e) => setFilterCommunity(e.target.value)}
-              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm outline-none min-w-0"
+              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm outline-none"
             >
               <option value="all">All Communities</option>
               {jobCommunities.map((c) => (
@@ -314,108 +388,87 @@ export default function JobTracker() {
           </div>
         </div>
 
-        {/* Job List (grouped by community) */}
+        {/* Job List grouped by community */}
         {Object.keys(grouped).length === 0 ? (
           <div className="bg-[#111] border border-[#222] rounded-lg p-8 text-center">
             <Home size={32} className="mx-auto mb-3 text-[rgba(255,255,255,0.2)]" />
-            <p className="text-[rgba(255,255,255,0.5)] mb-1">No jobs yet</p>
-            <p className="text-xs text-[rgba(255,255,255,0.3)]">Tap &quot;Add Job&quot; to get started</p>
+            <p className="text-[rgba(255,255,255,0.5)]">No jobs match your filters</p>
           </div>
         ) : (
           Object.entries(grouped)
             .sort(([a], [b]) => a.localeCompare(b))
-            .map(([community, communityJobs]) => {
+            .map(([community, cJobs]) => {
               const isExpanded = expandedCommunity === community || expandedCommunity === null;
-              const done = communityJobs.filter((j) => j.status === "complete").length;
+              const done = cJobs.filter((j) => j.stage === "Complete").length;
+              const builder = cJobs[0]?.builder || builderFor(community);
               return (
                 <div key={community} className="bg-[#111] border border-[#222] rounded-lg overflow-hidden">
                   <button
                     onClick={() =>
-                      setExpandedCommunity(
-                        expandedCommunity === community ? null : community
-                      )
+                      setExpandedCommunity(expandedCommunity === community ? null : community)
                     }
                     className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#1a1a1a] transition-colors"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      <span className="font-medium">{community}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)]">
-                        {communityJobs.length} job{communityJobs.length !== 1 ? "s" : ""}
+                      <div className="text-left min-w-0">
+                        <span className="font-medium">{community}</span>
+                        <span className="text-xs text-[rgba(255,255,255,0.35)] ml-2">{builder}</span>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.5)] shrink-0 ml-2">
+                        {cJobs.length}
                       </span>
                     </div>
-                    <span className="text-xs text-emerald-400">
-                      {done}/{communityJobs.length} done
+                    <span className="text-xs text-emerald-400 shrink-0">
+                      {done}/{cJobs.length} done
                     </span>
                   </button>
 
                   {isExpanded && (
                     <div className="border-t border-[#1a1a1a]">
-                      {communityJobs
+                      {cJobs
                         .sort((a, b) => a.lot.localeCompare(b.lot, undefined, { numeric: true }))
-                        .map((job) => {
-                          const si = statusInfo(job.status);
-                          return (
+                        .map((job) => (
+                          <div
+                            key={job.id}
+                            className="px-4 py-2.5 border-b border-[#1a1a1a] last:border-0 flex items-center gap-3"
+                          >
                             <div
-                              key={job.id}
-                              className="px-4 py-3 border-b border-[#1a1a1a] last:border-0 flex items-center gap-3"
-                            >
-                              {/* Status dot + lot */}
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                                  style={{ background: si.color }}
-                                  title={si.label}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-sm font-medium">
-                                      Lot {job.lot}
-                                    </span>
-                                    <span
-                                      className="text-xs px-1.5 py-0.5 rounded"
-                                      style={{
-                                        background: `${phaseColor(job.phase)}20`,
-                                        color: phaseColor(job.phase),
-                                      }}
-                                    >
-                                      {fmt(job.phase)}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-[rgba(255,255,255,0.4)] truncate">
-                                    {job.crew || "No crew"}{job.notes ? ` — ${job.notes}` : ""}
-                                  </div>
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ background: stageColor(job.stage) }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-sm font-medium">Lot {job.lot}</span>
+                                {job.stage && (
+                                  <span
+                                    className="text-[11px] px-1.5 py-0.5 rounded"
+                                    style={{
+                                      background: `${stageColor(job.stage)}15`,
+                                      color: stageColor(job.stage),
+                                    }}
+                                  >
+                                    {job.stage}
+                                  </span>
+                                )}
+                              </div>
+                              {(job.crew || job.notes) && (
+                                <div className="text-xs text-[rgba(255,255,255,0.35)] truncate mt-0.5">
+                                  {job.crew}{job.crew && job.notes ? " — " : ""}{job.notes}
                                 </div>
-                              </div>
-
-                              {/* Quick status buttons */}
-                              <div className="flex items-center gap-1 shrink-0">
-                                <select
-                                  value={job.status}
-                                  onChange={(e) => quickStatus(job.id, e.target.value as Status)}
-                                  className="bg-transparent border border-[#333] rounded px-1.5 py-1 text-xs outline-none"
-                                  style={{ color: si.color }}
-                                >
-                                  {STATUSES.map((s) => (
-                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleEdit(job)}
-                                  className="p-1.5 hover:bg-[rgba(255,255,255,0.05)] rounded"
-                                >
-                                  <Edit3 size={14} className="text-[rgba(255,255,255,0.4)]" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(job.id)}
-                                  className="p-1.5 hover:bg-red-400/10 rounded"
-                                >
-                                  <Trash2 size={14} className="text-red-400/50" />
-                                </button>
-                              </div>
+                              )}
                             </div>
-                          );
-                        })}
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => handleEdit(job)} className="p-1.5 hover:bg-[rgba(255,255,255,0.05)] rounded">
+                                <Edit3 size={14} className="text-[rgba(255,255,255,0.4)]" />
+                              </button>
+                              <button onClick={() => handleDelete(job.id)} className="p-1.5 hover:bg-red-400/10 rounded">
+                                <Trash2 size={14} className="text-red-400/40" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
@@ -424,14 +477,12 @@ export default function JobTracker() {
         )}
       </div>
 
-      {/* Add/Edit Job Modal */}
+      {/* Add/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
           <div className="bg-[#111] border border-[#222] rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#222]">
-              <h2 className="font-semibold">
-                {editingId ? "Edit Job" : "Add New Job"}
-              </h2>
+              <h2 className="font-semibold">{editingId ? "Edit Job" : "Add New Job"}</h2>
               <button onClick={resetForm} className="p-1.5 hover:bg-[#1a1a1a] rounded-lg">
                 <X size={18} />
               </button>
@@ -448,7 +499,7 @@ export default function JobTracker() {
                 >
                   <option value="">Select community...</option>
                   {COMMUNITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c.name} value={c.name}>{c.name} ({c.builder})</option>
                   ))}
                 </select>
               </div>
@@ -460,57 +511,41 @@ export default function JobTracker() {
                   type="text"
                   value={form.lot}
                   onChange={(e) => setForm({ ...form, lot: e.target.value })}
-                  placeholder="e.g. 12, 3A, 45-48"
+                  placeholder="e.g. 12, 3A, 45"
                   className="w-full bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-400 placeholder:text-[rgba(255,255,255,0.2)]"
                 />
               </div>
 
-              {/* Phase */}
+              {/* Stage */}
               <div>
-                <label className="text-xs text-[rgba(255,255,255,0.5)] mb-1 block">Phase</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {PHASES.map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => setForm({ ...form, phase: p.value })}
-                      className="px-3 py-2 rounded-lg text-sm border transition-colors"
-                      style={{
-                        background: form.phase === p.value ? `${p.color}15` : "transparent",
-                        borderColor: form.phase === p.value ? `${p.color}50` : "#222",
-                        color: form.phase === p.value ? p.color : "rgba(255,255,255,0.5)",
-                      }}
-                    >
-                      {p.label}
-                    </button>
+                <label className="text-xs text-[rgba(255,255,255,0.5)] mb-1 block">Stage</label>
+                <select
+                  value={form.stage}
+                  onChange={(e) => setForm({ ...form, stage: e.target.value })}
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-400"
+                >
+                  <option value="">Select stage...</option>
+                  {STAGE_GROUPS.map((g) => (
+                    <optgroup key={g.group} label={`── ${g.group} ──`}>
+                      {g.stages.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </optgroup>
                   ))}
-                </div>
+                </select>
               </div>
 
               {/* Crew */}
               <div>
-                <label className="text-xs text-[rgba(255,255,255,0.5)] mb-1 block">Crew</label>
+                <label className="text-xs text-[rgba(255,255,255,0.5)] mb-1 block">Crew (optional)</label>
                 <select
                   value={form.crew}
                   onChange={(e) => setForm({ ...form, crew: e.target.value })}
                   className="w-full bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-400"
                 >
-                  <option value="">Select crew...</option>
+                  <option value="">No crew assigned</option>
                   {CREWS.map((c) => (
                     <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="text-xs text-[rgba(255,255,255,0.5)] mb-1 block">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as Status })}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-400"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
@@ -527,7 +562,6 @@ export default function JobTracker() {
                 />
               </div>
 
-              {/* Submit */}
               <button
                 onClick={handleSubmit}
                 disabled={!form.community || !form.lot}
