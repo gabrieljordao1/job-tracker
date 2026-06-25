@@ -1,8 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { Briefcase, CheckCircle, Clock, AlertTriangle, Hammer, Paintbrush } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Briefcase, Share2, Download, Check } from "lucide-react";
 
 interface Job {
   id: string;
@@ -30,23 +29,58 @@ function stageColor(stage: string): string {
   return "#94a3b8";
 }
 
-function stageGroupName(stage: string): string {
-  for (const g of STAGE_GROUPS) {
-    if (g.stages.includes(stage)) return g.group;
-  }
-  return "—";
-}
+export default function ReportPage() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [shared, setShared] = useState(false);
 
-function ReportContent() {
-  const params = useSearchParams();
-  const raw = params.get("data");
+  useEffect(() => {
+    // Read jobs from localStorage (same key as main page)
+    try {
+      const raw = localStorage.getItem("stancil_jobs_v3");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setJobs(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
-  let jobs: Job[] = [];
-  try {
-    if (raw) jobs = JSON.parse(decodeURIComponent(escape(atob(raw))));
-  } catch {
-    try { if (raw) jobs = JSON.parse(atob(raw)); } catch { /* invalid */ }
-  }
+  const handleShare = async () => {
+    // Build a clean text summary to share
+    const grouped = jobs.reduce<Record<string, Job[]>>((acc, j) => {
+      (acc[j.community] ||= []).push(j);
+      return acc;
+    }, {});
+
+    let text = `Stancil Services — Weekly Job Report\n`;
+    text += `${jobs.length} total lots · ${jobs.filter(j => j.stage === "Complete").length} complete\n\n`;
+
+    for (const [community, cJobs] of Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))) {
+      const builder = cJobs[0]?.builder || "";
+      const done = cJobs.filter(j => j.stage === "Complete").length;
+      text += `${community} (${builder}) — ${done}/${cJobs.length} done\n`;
+      for (const job of cJobs.sort((a, b) => a.lot.localeCompare(b.lot, undefined, { numeric: true }))) {
+        text += `  Lot ${job.lot}: ${job.stage || "—"}${job.notes ? ` (${job.notes})` : ""}\n`;
+      }
+      text += "\n";
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Weekly Job Report", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(text);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } catch { /* ignore */ }
+    }
+  };
 
   if (jobs.length === 0) {
     return (
@@ -55,7 +89,7 @@ function ReportContent() {
           <Briefcase size={48} className="mx-auto mb-4 text-[rgba(255,255,255,0.2)]" />
           <h1 className="text-xl font-semibold mb-2">No Report Data</h1>
           <p className="text-sm text-[rgba(255,255,255,0.5)]">
-            This link doesn&apos;t contain any job data.
+            No jobs found. Add jobs on the main page first.
           </p>
         </div>
       </div>
@@ -69,7 +103,6 @@ function ReportContent() {
   const homeowners = jobs.filter((j) => STAGE_GROUPS[3].stages.includes(j.stage)).length;
   const waiting = jobs.filter((j) => STAGE_GROUPS[4].stages.includes(j.stage)).length;
   const complete = jobs.filter((j) => j.stage === "Complete").length;
-  const noStage = jobs.filter((j) => !j.stage).length;
 
   const grouped = jobs.reduce<Record<string, Job[]>>((acc, j) => {
     (acc[j.community] ||= []).push(j);
@@ -83,6 +116,7 @@ function ReportContent() {
 
   return (
     <div className="min-h-screen p-4 max-w-2xl mx-auto space-y-6 pb-12">
+      {/* Header with share button */}
       <div className="text-center pt-4">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Briefcase size={24} className="text-emerald-400" />
@@ -91,6 +125,13 @@ function ReportContent() {
         <p className="text-sm text-[rgba(255,255,255,0.5)]">
           Stancil Services &mdash; {dateStr}
         </p>
+        <button
+          onClick={handleShare}
+          className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-400 transition-colors"
+        >
+          {shared ? <Check size={14} /> : <Share2 size={14} />}
+          {shared ? "Copied!" : "Share Report"}
+        </button>
       </div>
 
       {/* Summary */}
@@ -177,13 +218,5 @@ function ReportContent() {
         Generated {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
       </div>
     </div>
-  );
-}
-
-export default function ReportPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-[rgba(255,255,255,0.5)]">Loading report...</div></div>}>
-      <ReportContent />
-    </Suspense>
   );
 }

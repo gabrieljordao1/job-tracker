@@ -11,7 +11,6 @@ import {
   Briefcase,
   Share2,
   Search,
-  Check,
   Home,
 } from "lucide-react";
 
@@ -210,7 +209,6 @@ export default function JobTracker() {
   const [filterStageGroup, setFilterStageGroup] = useState<string>("all");
   const [filterCommunity, setFilterCommunity] = useState<string>("all");
   const [expandedCommunity, setExpandedCommunity] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -327,19 +325,9 @@ export default function JobTracker() {
   // Unique communities in jobs
   const jobCommunities = [...new Set(jobs.map((j) => j.community))].sort();
 
-  // Share
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/report?data=${encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(jobs)))))}`
-    : "";
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({ title: "Weekly Job Report", url: shareUrl });
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  // Report — open the report page (reads from localStorage)
+  const handleReport = () => {
+    window.open("/report", "_blank");
   };
 
   return (
@@ -353,11 +341,11 @@ export default function JobTracker() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleShare}
+              onClick={handleReport}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-[#111] border border-[#222] hover:border-[#333] transition-colors"
             >
-              {copied ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
-              {copied ? "Copied!" : "Report"}
+              <Share2 size={14} />
+              Report
             </button>
             <button
               onClick={() => { resetForm(); setShowForm(true); }}
