@@ -139,13 +139,20 @@ function loadJobs(): Job[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem("stancil_jobs_v2");
-    if (raw) return JSON.parse(raw);
-    // First load: seed from spreadsheet data
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Re-seed if saved data is empty (user deleted all, or browser purged)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    // First load or empty: seed from spreadsheet data
     const seed = buildSeedJobs();
     localStorage.setItem("stancil_jobs_v2", JSON.stringify(seed));
     return seed;
   } catch {
-    return [];
+    // Corrupted data — re-seed
+    const seed = buildSeedJobs();
+    try { localStorage.setItem("stancil_jobs_v2", JSON.stringify(seed)); } catch {}
+    return seed;
   }
 }
 
@@ -252,6 +259,12 @@ export default function JobTracker() {
     setForm({ community: "", lot: "", stage: "", crew: "", notes: "" });
     setShowForm(false);
     setEditingId(null);
+  };
+
+  const handleResetData = () => {
+    if (!confirm("Reset all jobs to the original spreadsheet data? Any changes you made will be lost.")) return;
+    const seed = buildSeedJobs();
+    persist(seed);
   };
 
   // ─── Filtering ───────────────────────────────
@@ -476,6 +489,30 @@ export default function JobTracker() {
             })
         )}
       </div>
+
+      {/* Reset + Footer */}
+      {jobs.length === 0 && (
+        <div className="text-center py-12 space-y-4">
+          <Briefcase size={40} className="mx-auto text-[rgba(255,255,255,0.15)]" />
+          <p className="text-[rgba(255,255,255,0.4)] text-sm">No jobs found</p>
+          <button
+            onClick={handleResetData}
+            className="px-4 py-2 rounded-lg text-sm bg-emerald-500 text-black font-medium hover:bg-emerald-400 transition-colors"
+          >
+            Load Default Jobs
+          </button>
+        </div>
+      )}
+      {jobs.length > 0 && (
+        <div className="text-center py-6">
+          <button
+            onClick={handleResetData}
+            className="text-xs text-[rgba(255,255,255,0.25)] hover:text-[rgba(255,255,255,0.5)] transition-colors"
+          >
+            Reset to spreadsheet data
+          </button>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showForm && (
