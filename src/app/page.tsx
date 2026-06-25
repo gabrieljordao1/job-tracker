@@ -71,60 +71,82 @@ function buildSeedJobs(): Job[] {
     });
   };
 
-  // Odell Park — DRB
-  add("Odell Park", "DRB", "1", "Waiting for QC", "Repairs need to be sanded and painted");
-  add("Odell Park", "DRB", "2", "Waiting for QC");
+  // Odell Park — DRB (6 lots, 2 complete)
+  add("Odell Park", "DRB", "1", "Complete");
+  add("Odell Park", "DRB", "2", "Complete");
   add("Odell Park", "DRB", "3", "Waiting for QC");
   add("Odell Park", "DRB", "4", "Waiting for QC");
   add("Odell Park", "DRB", "5", "Waiting for QC");
   add("Odell Park", "DRB", "42", "");
 
-  // Mallard Park — Pulte
-  for (const lot of ["13","14","15","16","17","18","19","20"]) {
-    add("Mallard Park", "Pulte", lot, "Waiting for Homeowners");
+  // Mallard Park — Pulte (18 lots, 12 complete)
+  add("Mallard Park", "Pulte", "13", "Waiting for Homeowners");
+  for (const lot of ["14","15","16","17","18","19","20"]) {
+    add("Mallard Park", "Pulte", lot, "Complete");
   }
-  add("Mallard Park", "Pulte", "58", "Waiting for Final");
-  add("Mallard Park", "Pulte", "59", "Prime");
-  add("Mallard Park", "Pulte", "60", "Prime");
-  add("Mallard Park", "Pulte", "61", "Prime");
-  add("Mallard Park", "Pulte", "62", "Waiting for Final");
-
-  // Galloway — Pulte
-  for (const lot of ["25","26","27","28"]) {
-    add("Galloway", "Pulte", lot, "Waiting for Final");
+  add("Mallard Park", "Pulte", "21", "QC Point Up");
+  add("Mallard Park", "Pulte", "22", "QC Point Up");
+  add("Mallard Park", "Pulte", "23", "Final Point Up");
+  add("Mallard Park", "Pulte", "24", "Final Point Up");
+  add("Mallard Park", "Pulte", "25", "Final Point Up");
+  for (const lot of ["58","59","60","61","62"]) {
+    add("Mallard Park", "Pulte", lot, "Complete");
   }
 
-  // Olmsted — Pote
-  add("Olmsted", "Pote", "276", "Waiting for Final");
-  add("Olmsted", "Pote", "277", "1st Paint");
-  add("Olmsted", "Pote", "278", "Prime");
-  add("Olmsted", "Pote", "279", "Prime");
-  add("Olmsted", "Pote", "280", "Hang");
-
-  // Sugar Creek — Red Cedar (lots 1-40)
-  for (let i = 1; i <= 33; i++) {
-    add("Sugar Creek", "Red Cedar", String(i), "Waiting for Final",
-      i === 12 ? "Need to ask for an EPO for accent colors" : "");
+  // Galloway — Pulte (8 lots, 3 complete)
+  for (const lot of ["21","22","23","24"]) {
+    add("Galloway", "Pulte", lot, "Waiting for Homeowners");
   }
-  for (const lot of ["34","35","36","38","40"]) add("Sugar Creek", "Red Cedar", lot, "Prime");
-  for (const lot of ["37","39"]) add("Sugar Creek", "Red Cedar", lot, "Waiting for Trim");
+  for (const lot of ["25","26","27"]) {
+    add("Galloway", "Pulte", lot, "Complete");
+  }
+  add("Galloway", "Pulte", "28", "Homeowners Paint");
 
-  // Plot — Red Cedar
+  // Olmsted — Pote (5 lots, 3 complete)
+  add("Olmsted", "Pote", "276", "Complete");
+  add("Olmsted", "Pote", "277", "Complete");
+  add("Olmsted", "Pote", "278", "Complete");
+  add("Olmsted", "Pote", "279", "Waiting for Homeowners");
+  add("Olmsted", "Pote", "280", "QC Point Up");
+
+  // Sugar Creek — Red Cedar (40 lots, 10 complete)
+  for (const lot of ["1","2","3","4"]) add("Sugar Creek", "Red Cedar", lot, "Complete");
+  add("Sugar Creek", "Red Cedar", "5", "Waiting for Homeowners");
+  for (const lot of ["6","7","8"]) add("Sugar Creek", "Red Cedar", lot, "Complete");
+  add("Sugar Creek", "Red Cedar", "9", "Waiting for Homeowners");
+  add("Sugar Creek", "Red Cedar", "10", "Homeowners Point Up");
+  add("Sugar Creek", "Red Cedar", "11", "Waiting for Homeowners");
+  for (const lot of ["12","13","14"]) add("Sugar Creek", "Red Cedar", lot, "Complete");
+  add("Sugar Creek", "Red Cedar", "15", "Waiting for Homeowners", "need repair done in garage");
+  for (let i = 16; i <= 33; i++) {
+    add("Sugar Creek", "Red Cedar", String(i), "Waiting for Homeowners");
+  }
+  for (let i = 34; i <= 40; i++) {
+    add("Sugar Creek", "Red Cedar", String(i), "Waiting for Final");
+  }
+
+  // Plot — Red Cedar (32 lots, 0 complete)
   for (const s of ["A","B","C","D"]) {
-    add("Plot", "Red Cedar", `1${s}`, "Waiting for QC", s === "A" ? "Need to ask for EPO for accent colors" : "");
-    add("Plot", "Red Cedar", `2${s}`, "Waiting for QC");
-    add("Plot", "Red Cedar", `3${s}`, "Final Paint");
-    add("Plot", "Red Cedar", `4${s}`, "Final Paint");
+    add("Plot", "Red Cedar", `1${s}`, "Waiting for Homeowners", s === "A" ? "Need to ask for EPO for accent colors" : "");
+    add("Plot", "Red Cedar", `2${s}`, "Waiting for Homeowners");
+    add("Plot", "Red Cedar", `3${s}`, "Waiting for Homeowners");
+    add("Plot", "Red Cedar", `4${s}`, "Waiting for Homeowners");
     add("Plot", "Red Cedar", `5${s}`, "");
-    add("Plot", "Red Cedar", `6${s}`, "Waiting for Trim");
-    add("Plot", "Red Cedar", `7${s}`, "Sand");
-    add("Plot", "Red Cedar", `8${s}`, "Waiting for Final");
+    add("Plot", "Red Cedar", `6${s}`, "Waiting for QC");
+    add("Plot", "Red Cedar", `7${s}`, "Waiting for QC");
+    add("Plot", "Red Cedar", `8${s}`, "Waiting for Homeowners");
   }
 
-  // Anderson Townhomes — DR Horton
-  for (const lot of ["15","16","17","18","19"]) {
-    add("Anderson Townhomes", "DR Horton", lot, "");
+  // Anderson Townhomes — DR Horton (19 lots, 0 complete)
+  for (const lot of ["1","2","3","4","5"]) add("Anderson Townhomes", "DR Horton", lot, "Final Paint");
+  add("Anderson Townhomes", "DR Horton", "6", "Waiting for QC");
+  add("Anderson Townhomes", "DR Horton", "7", "Final Paint");
+  add("Anderson Townhomes", "DR Horton", "8", "Final Paint");
+  add("Anderson Townhomes", "DR Horton", "9", "Waiting for Final");
+  for (const lot of ["10","11","12","13","14","15","16","17","18"]) {
+    add("Anderson Townhomes", "DR Horton", lot, "Waiting for QC");
   }
+  add("Anderson Townhomes", "DR Horton", "19", "Waiting for Homeowners");
 
   return jobs;
 }
@@ -138,7 +160,7 @@ function genId() {
 function loadJobs(): Job[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem("stancil_jobs_v2");
+    const raw = localStorage.getItem("stancil_jobs_v3");
     if (raw) {
       const parsed = JSON.parse(raw);
       // Re-seed if saved data is empty (user deleted all, or browser purged)
@@ -146,18 +168,18 @@ function loadJobs(): Job[] {
     }
     // First load or empty: seed from spreadsheet data
     const seed = buildSeedJobs();
-    localStorage.setItem("stancil_jobs_v2", JSON.stringify(seed));
+    localStorage.setItem("stancil_jobs_v3", JSON.stringify(seed));
     return seed;
   } catch {
     // Corrupted data — re-seed
     const seed = buildSeedJobs();
-    try { localStorage.setItem("stancil_jobs_v2", JSON.stringify(seed)); } catch {}
+    try { localStorage.setItem("stancil_jobs_v3", JSON.stringify(seed)); } catch {}
     return seed;
   }
 }
 
 function saveJobs(jobs: Job[]) {
-  localStorage.setItem("stancil_jobs_v2", JSON.stringify(jobs));
+  localStorage.setItem("stancil_jobs_v3", JSON.stringify(jobs));
 }
 
 function stageColor(stage: string): string {
